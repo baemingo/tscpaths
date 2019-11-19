@@ -1,13 +1,13 @@
 {
-  "name": "tscpaths",
-  "version": "0.0.9",
+  "name": "@baemingo/tscpaths-async",
+  "version": "0.0.10",
   "description": "Replace absolute paths to relative paths after typescript compilation",
   "main": "cjs/index.js",
-  "module": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "types": "cjs/index.d.ts",
   "bin": {
     "tscpaths": "cjs/index.js"
   },
+  "engines" : { "node" : "^10.0.0" },
   "scripts": {
     "build": "yarn build:esm && yarn build:cjs",
     "build:esm": "tsc -p ./tsconfig.esm.json",
@@ -23,7 +23,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/joonhocho/tscpaths.git"
+    "url": "https://github.com/baemingo/tscpaths-async.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "allow-same-version": false,
+    "git-tag-version": false
   },
   "keywords": [
     "typescript",
@@ -37,12 +42,13 @@
   "author": "Joon Ho Cho <joonho1101@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/joonhocho/tscpaths/issues"
+    "url": "https://github.com/baemingo/tscpaths-async/issues"
   },
-  "homepage": "https://github.com/joonhocho/tscpaths#readme",
+  "homepage": "https://github.com/baemingo/tscpaths-async#readme",
   "devDependencies": {
+    "@types/fs-extra": "^8.0.1",
     "@types/jest": "^24.0.12",
-    "@types/node": "^12.0.0",
+    "@types/node": "^10.0.0",
     "jest": "^24.8.0",
     "prettier": "^1.17.0",
     "ts-jest": "^24.0.2",
@@ -53,6 +59,7 @@
   },
   "dependencies": {
     "commander": "^2.20.0",
-    "globby": "^9.2.0"
+    "fs-extra": "^8.1.0",
+    "globby": "^10.0.0"
   }
 }

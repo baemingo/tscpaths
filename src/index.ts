@@ -2,10 +2,12 @@
 
 // tslint:disable no-console
 import * as program from 'commander';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { sync } from 'globby';
+import { existsSync, readFile, writeFile } from 'fs-extra';
+import { stream } from 'globby';
 import { dirname, relative, resolve } from 'path';
 import { loadConfig } from './util';
+
+let startTime = new Date().getTime();
 
 program
   .version('0.0.1')
@@ -101,9 +103,10 @@ const toRelative = (from: string, x: string): string => {
 
 const exts = ['.js', '.jsx', '.ts', '.tsx', '.d.ts', '.json'];
 
-let replaceCount = 0;
-
-const absToRel = (modulePath: string, outFile: string): string => {
+const absToRel = (
+  modulePath: string,
+  outFile: string
+): { path: string; isMatched: boolean } => {
   const alen = aliases.length;
   for (let j = 0; j < alen; j += 1) {
     const { prefix, aliasPaths } = aliases[j];
@@ -123,20 +126,19 @@ const absToRel = (modulePath: string, outFile: string): string => {
           exts.some((ext) => existsSync(moduleSrc + ext))
         ) {
           const rel = toRelative(dirname(srcFile), moduleSrc);
-          replaceCount += 1;
           verboseLog(
             `\treplacing '${modulePath}' -> '${rel}' referencing ${relative(
               basePath,
               moduleSrc
             )}`
           );
-          return rel;
+          return { path: rel, isMatched: true };
         }
       }
       console.log(`could not replace ${modulePath}`);
     }
   }
-  return modulePath;
+  return { path: modulePath, isMatched: false };
 };
 
 const requireRegex = /(?:import|require)\(['"]([^'"]*)['"]\)/g;
@@ -146,43 +148,68 @@ const replaceImportStatement = (
   orig: string,
   matched: string,
   outFile: string
-): string => {
+): { importStatement: string; isMatched: boolean } => {
   const index = orig.indexOf(matched);
-  return (
-    orig.substring(0, index) +
-    absToRel(matched, outFile) +
-    orig.substring(index + matched.length)
-  );
+  const { path, isMatched } = absToRel(matched, outFile);
+  const newImport =
+    orig.substring(0, index) + path + orig.substring(index + matched.length);
+  return { importStatement: newImport, isMatched };
 };
 
-const replaceAlias = (text: string, outFile: string): string =>
-  text
-    .replace(requireRegex, (orig, matched) =>
-      replaceImportStatement(orig, matched, outFile)
-    )
-    .replace(importRegex, (orig, matched) =>
-      replaceImportStatement(orig, matched, outFile)
+const replaceAlias = (
+  text: string,
+  outFile: string
+): { newText: string; replaceCount: number } => {
+  let replaceCount = 0;
+
+  const replaceCallback = (orig: string, matched: any): string => {
+    const { importStatement, isMatched } = replaceImportStatement(
+      orig,
+      matched,
+      outFile
     );
 
-// import relative to absolute path
-const files = sync(`${outPath}/**/*.{js,jsx,ts,tsx}`, {
-  dot: true,
-  noDir: true,
-} as any).map((x) => resolve(x));
+    if (isMatched) {
+      replaceCount += 1;
+    }
 
-let changedFileCount = 0;
+    return importStatement;
+  };
 
-const flen = files.length;
-for (let i = 0; i < flen; i += 1) {
-  const file = files[i];
-  const text = readFileSync(file, 'utf8');
-  const prevReplaceCount = replaceCount;
-  const newText = replaceAlias(text, file);
-  if (text !== newText) {
-    changedFileCount += 1;
-    log(`${file}: replaced ${replaceCount - prevReplaceCount} paths`);
-    writeFileSync(file, newText, 'utf8');
+  const newText = text
+    .replace(requireRegex, replaceCallback)
+    .replace(importRegex, replaceCallback);
+  return { newText, replaceCount };
+};
+
+const initTime = new Date().getTime() - startTime;
+verboseLog(`init finished. took: ${initTime} ms total`);
+startTime = new Date().getTime();
+
+(async (): Promise<void> => {
+  let changedFileCount = 0;
+  let totalReplaceCount = 0;
+  const globbyPath = outPath.replace(/\\/g, '/');
+  for await (const path of stream(
+    [`${globbyPath}/**/*.{js,jsx,ts,tsx}`, `!${globbyPath}/node_modules/**/*`],
+    {
+      dot: true,
+      noDir: true,
+    } as any
+  )) {
+    const file = resolve(path.toString());
+    const text = await readFile(file, 'utf8');
+    const { newText, replaceCount } = replaceAlias(text, file);
+    totalReplaceCount += replaceCount;
+    if (text !== newText) {
+      changedFileCount += 1;
+      log(`${file}: replaced ${replaceCount} paths`);
+      await writeFile(file, newText, 'utf8');
+    }
   }
-}
-
-log(`Replaced ${replaceCount} paths in ${changedFileCount} files`);
+  verboseLog(`paths fixed. took: ${new Date().getTime() - startTime} ms total`);
+  log(`Replaced ${totalReplaceCount} paths in ${changedFileCount} files`);
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
