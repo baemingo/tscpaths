@@ -1,4 +1,6 @@
+import { readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
+import { parseConfigFileTextToJson } from 'typescript';
 
 /*
 "baseUrl": ".",
@@ -42,7 +44,8 @@ export const loadConfig = (file: string): ITSConfig => {
       outDir: undefined,
       paths: undefined,
     },
-  } = require(file) as IRawTSConfig;
+  } = parseConfigFileTextToJson(file, readFileSync(file, 'utf-8'))
+    .config as IRawTSConfig;
 
   const config: ITSConfig = {};
   if (baseUrl) {
