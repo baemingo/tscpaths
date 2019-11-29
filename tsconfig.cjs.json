@@ -22,6 +22,7 @@
     "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "newLine": "LF",
     "outDir": "cjs",
     "paths": {
       "src/*": ["src/*"]
