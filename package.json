@@ -1,6 +1,6 @@
 {
   "name": "@baemingo/tscpaths-async",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Replace absolute paths to relative paths after typescript compilation",
   "main": "cjs/index.js",
   "types": "cjs/index.d.ts",
@@ -8,7 +8,7 @@
     "tscpaths": "cjs/index.js"
   },
   "engines": {
-    "node": "^10.0.0"
+    "node": ">=10.0.0"
   },
   "scripts": {
     "build": "yarn build:esm && yarn build:cjs",
