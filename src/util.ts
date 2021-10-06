@@ -59,7 +59,14 @@ export const loadConfig = (file: string): ITSConfig => {
   }
 
   if (ext) {
-    const parentConfig = loadConfig(resolve(dirname(file), ext));
+    let extPath = path.resolve(path.dirname(file),ext)
+    // try load file relative to node_modules to support extending from npm packages
+    // eg: https://github.com/tsconfig/bases
+    
+    if(!fs.existsSync(extPath)){
+        extPath = path.resolve(__dirname.split("node_modules")[0],"node_modules",ext)
+    }
+    const parentConfig = loadConfig(extPath);
     return {
       ...parentConfig,
       ...config,
